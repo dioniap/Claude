@@ -45,7 +45,21 @@ O deploy de produção usa **Docker Compose** com **Caddy**, que emite e renova 
 - **Painel:** `https://vendalaudos.simplificapn.com/`
 - **Webhook da Meta:** `https://vendalaudos.simplificapn.com/webhook`
 
-### Passo 1 — DNS na Hostinger
+### Configuração automática via API da Hostinger (recomendado)
+
+Com um token da API da Hostinger (hPanel → perfil → **Conta → API → Novo token**), o script `scripts/setup-hostinger.js` faz a configuração sozinho:
+
+```bash
+export HOSTINGER_API_TOKEN=seu-token
+node scripts/setup-hostinger.js status   # lista VPS e registros DNS atuais
+node scripts/setup-hostinger.js dns      # cria vendalaudos.simplificapn.com -> IP do VPS
+node scripts/setup-hostinger.js deploy   # sobe o projeto Docker no VPS (Docker Manager)
+node scripts/setup-hostinger.js all      # dns + deploy
+```
+
+O `deploy` usa o Docker Manager do VPS da Hostinger apontando para este repositório e envia as variáveis do seu `.env` local. Alternativa manual abaixo.
+
+### Passo 1 — DNS na Hostinger (manual)
 No hPanel da Hostinger (onde está o domínio `simplificapn.com`): **Domínios → simplificapn.com → DNS / Nameservers → Adicionar registro**:
 
 | Tipo | Nome | Aponta para | TTL |
