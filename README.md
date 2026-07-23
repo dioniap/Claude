@@ -45,28 +45,22 @@ O deploy de produção usa **Docker Compose** com **Caddy**, que emite e renova 
 - **Painel:** `https://vendalaudos.simplificapn.com/`
 - **Webhook da Meta:** `https://vendalaudos.simplificapn.com/webhook`
 
-### Configuração automática via API da Hostinger (recomendado)
+### Passo 1 — DNS no Cloudflare
 
-Com um token da API da Hostinger (hPanel → perfil → **Conta → API → Novo token**), o script `scripts/setup-hostinger.js` faz a configuração sozinho:
+O DNS do `simplificapn.com` fica no **Cloudflare** (mesmo padrão do `atendimento.simplificapn.com`, o sistema omnichannel). Com um token de API (dash.cloudflare.com → My Profile → **API Tokens** → Create Token → modelo *Edit zone DNS* restrito à zona `simplificapn.com`), o script cria o registro sozinho:
 
 ```bash
-export HOSTINGER_API_TOKEN=seu-token
-node scripts/setup-hostinger.js status   # lista VPS e registros DNS atuais
-node scripts/setup-hostinger.js dns      # cria vendalaudos.simplificapn.com -> IP do VPS
-node scripts/setup-hostinger.js deploy   # sobe o projeto Docker no VPS (Docker Manager)
-node scripts/setup-hostinger.js all      # dns + deploy
+export CLOUDFLARE_API_TOKEN=seu-token
+node scripts/setup-cloudflare.js status              # mostra os registros atuais da zona
+node scripts/setup-cloudflare.js dns --ip IP.DO.SERVIDOR             # DNS only (Caddy emite o HTTPS)
+node scripts/setup-cloudflare.js dns --ip IP.DO.SERVIDOR --proxied   # com proxy laranja do Cloudflare
 ```
 
-O `deploy` usa o Docker Manager do VPS da Hostinger apontando para este repositório e envia as variáveis do seu `.env` local. Alternativa manual abaixo.
+Manual: Cloudflare → zona `simplificapn.com` → DNS → registro `A`, nome `vendalaudos`, apontando para o IP do servidor.
 
-### Passo 1 — DNS na Hostinger (manual)
-No hPanel da Hostinger (onde está o domínio `simplificapn.com`): **Domínios → simplificapn.com → DNS / Nameservers → Adicionar registro**:
+> **DNS only vs proxy:** no modo *DNS only* (nuvem cinza) o Caddy do docker-compose emite o certificado sozinho — mais simples. Com o proxy laranja (como o `atendimento`), o SSL da zona deve estar em modo *Full* e o servidor usa um Origin Certificate do Cloudflare.
 
-| Tipo | Nome | Aponta para | TTL |
-|---|---|---|---|
-| `A` | `vendalaudos` | IP do seu VPS | 300 |
-
-> Precisa ser um **VPS** (da própria Hostinger ou de outro provedor) com Docker instalado. A hospedagem compartilhada de sites não roda este sistema. As portas **80 e 443** do VPS precisam estar liberadas.
+> **Servidor:** precisa ser um **VPS** com Docker (o mesmo servidor onde roda o omnichannel serve — os sistemas convivem; se ele já tiver um proxy nas portas 80/443, rode só o container `app` e adicione um vhost no proxy existente em vez do Caddy). Se o VPS for da Hostinger, o script `scripts/setup-hostinger.js deploy` sobe o projeto pelo Docker Manager via API.
 
 ### Passo 2 — Subir o sistema no VPS
 
