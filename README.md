@@ -38,7 +38,79 @@ npm start
 
 ---
 
-## 🌐 Colocando no ar em `vendalaudos.simplificapn.com`
+## 🏠 Implantação no SERVIDOR LOCAL (junto com os outros sistemas)
+
+Se o omnichannel e os demais sistemas já rodam num servidor local, o atende-laudos entra no mesmo servidor sem conflito — ele usa a porta interna 3010 e é publicado na internet pelo **Cloudflare Tunnel** (sem abrir porta no roteador, com HTTPS automático do Cloudflare).
+
+### 1. Baixar e configurar (no servidor local)
+
+```bash
+git clone https://github.com/dioniap/Claude.git atende-laudos
+cd atende-laudos
+git checkout claude/whatsapp-ai-laudo-leads-tviuxz
+cp .env.example .env
+nano .env               # preencher credenciais (Meta, Anthropic, SMTP, Redrive, G-Click)
+nano knowledge/base.md  # valores, prazos, e-mail p/ documentos
+```
+
+### 2. Subir o sistema
+
+```bash
+docker compose -f docker-compose.local.yml up -d --build
+docker compose -f docker-compose.local.yml logs -f   # conferir a subida
+curl http://localhost:3010/                          # deve responder {"app":"atende-laudos","ok":true}
+```
+
+### 3. Publicar com o Cloudflare Tunnel
+
+**Se o servidor já tem um túnel** (é o mais provável, dado o padrão do `atendimento.simplificapn.com`):
+[one.dash.cloudflare.com](https://one.dash.cloudflare.com) → **Networks → Tunnels** → seu túnel → **Public Hostname → Add a public hostname**:
+
+| Campo | Valor |
+|---|---|
+| Subdomain | `vendalaudos` |
+| Domain | `simplificapn.com` |
+| Service Type | `HTTP` |
+| URL | `localhost:3010` *(cloudflared no host)* ou `atende-laudos:3000` *(cloudflared em container — veja o comentário no docker-compose.local.yml)* |
+
+O Cloudflare cria o registro DNS sozinho ao salvar. Pronto — `https://vendalaudos.simplificapn.com` já responde.
+
+**Se ainda não existe túnel** no servidor:
+
+```bash
+# instalar cloudflared (Linux x64)
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o cloudflared.deb
+sudo dpkg -i cloudflared.deb
+cloudflared tunnel login                       # abre o navegador para autorizar a zona
+cloudflared tunnel create simplifica-local
+cloudflared tunnel route dns simplifica-local vendalaudos.simplificapn.com
+# /etc/cloudflared/config.yml:
+#   tunnel: simplifica-local
+#   credentials-file: /root/.cloudflared/<id-do-tunel>.json
+#   ingress:
+#     - hostname: vendalaudos.simplificapn.com
+#       service: http://localhost:3010
+#     - service: http_status:404
+sudo cloudflared service install && sudo systemctl start cloudflared
+```
+
+### 4. Webhook da Meta
+
+No app da Meta (WhatsApp → Configuração → Webhook): URL `https://vendalaudos.simplificapn.com/webhook`, token = `WHATSAPP_VERIFY_TOKEN` do `.env`, assinar o campo `messages` (e `smb_message_echoes` se disponível).
+
+### Atualizações
+
+```bash
+cd atende-laudos
+git pull
+docker compose -f docker-compose.local.yml up -d --build
+```
+
+> ⚠️ **Servidor local = webhook depende da sua energia/internet.** Se o servidor cair, as mensagens dos leads não são respondidas até ele voltar (a Meta reenvia eventos por um tempo limitado). Para uma operação de vendas, considere no futuro migrar para um VPS.
+
+---
+
+## 🌐 Alternativa: VPS dedicado em `vendalaudos.simplificapn.com`
 
 O deploy de produção usa **Docker Compose** com **Caddy**, que emite e renova o certificado HTTPS sozinho (Let's Encrypt) — sem configuração manual de SSL. Endereços finais:
 

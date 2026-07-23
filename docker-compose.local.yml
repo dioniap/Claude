@@ -1,0 +1,36 @@
+# ============================================================
+# Deploy no SERVIDOR LOCAL (junto com os outros sistemas)
+#
+# Sobe apenas o app (sem Caddy - o HTTPS fica por conta do
+# Cloudflare Tunnel, como nos seus outros sistemas):
+#
+#   docker compose -f docker-compose.local.yml up -d --build
+#
+# O painel fica em http://localhost:3010 dentro do servidor;
+# o tunel do Cloudflare publica como vendalaudos.simplificapn.com
+# ============================================================
+services:
+  app:
+    build: .
+    container_name: atende-laudos
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - PORT=3000
+      - DB_PATH=/app/data/atende-laudos.db
+    volumes:
+      - ./data:/app/data
+      - ./knowledge:/app/knowledge:ro
+    ports:
+      # acessivel so dentro do servidor (cloudflared instalado no host alcanca)
+      - "127.0.0.1:3010:3000"
+    # Se o cloudflared rodar em CONTAINER (nao no host), comente "ports" acima,
+    # descomente as linhas abaixo com o nome da rede docker do cloudflared
+    # (descubra com: docker inspect cloudflared | grep -A3 Networks)
+    # e use http://atende-laudos:3000 como servico no tunel:
+    # networks:
+    #   - rede-do-cloudflared
+
+# networks:
+#   rede-do-cloudflared:
+#     external: true
