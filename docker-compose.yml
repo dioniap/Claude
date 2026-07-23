@@ -1,0 +1,33 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - PORT=3000
+      - DB_PATH=/app/data/atende-laudos.db
+    volumes:
+      - ./data:/app/data
+      - ./knowledge:/app/knowledge:ro
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # dominio publico do sistema (Caddy emite o certificado HTTPS sozinho)
+      - DOMAIN=${DOMAIN:-vendalaudos.simplificapn.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:

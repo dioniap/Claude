@@ -32,8 +32,8 @@ app.use("/api", adminRouter);
 
 app.listen(config.port, () => {
   console.log(`[server] atende-laudos ouvindo na porta ${config.port}`);
-  console.log(`[server] painel:       http://localhost:${config.port}/`);
-  console.log(`[server] webhook Meta: GET/POST /webhook`);
+  console.log(`[server] painel:       ${config.publicUrl}/`);
+  console.log(`[server] webhook Meta: ${config.publicUrl}/webhook`);
   console.log(`[server] painel API:   /auth/*, /panel/*`);
   console.log(`[server] admin API:    /api/* (health, leads, dispatch)`);
 });

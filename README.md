@@ -27,7 +27,7 @@ Inclui o **Painel de Atendimento** web com login por e-mail, onde Dioni e Amanda
 - **Chat interno:** menu próprio para troca de mensagens entre os usuários do painel.
 - **G-Click:** aba de solicitações com filtros e documentos. Requer as credenciais `GCLICK_*` no `.env` (copie do sistema omnichannel, onde a integração já funciona; se lá os endpoints forem outros, ajuste `GCLICK_BASE_URL`/`GCLICK_AUTH_URL`/`GCLICK_SOLICITACOES_PATH`).
 
-## Instalação
+## Instalação (desenvolvimento)
 
 ```bash
 npm install
@@ -36,7 +36,57 @@ cp .env.example .env   # preencha as variáveis (veja abaixo)
 npm start
 ```
 
-O servidor precisa ficar acessível na internet por **HTTPS** para receber o webhook da Meta (use um VPS com domínio + reverse proxy, Railway, Render, ou `cloudflared`/`ngrok` para testes).
+---
+
+## 🌐 Colocando no ar em `vendalaudos.simplificapn.com`
+
+O deploy de produção usa **Docker Compose** com **Caddy**, que emite e renova o certificado HTTPS sozinho (Let's Encrypt) — sem configuração manual de SSL. Endereços finais:
+
+- **Painel:** `https://vendalaudos.simplificapn.com/`
+- **Webhook da Meta:** `https://vendalaudos.simplificapn.com/webhook`
+
+### Passo 1 — DNS na Hostinger
+No hPanel da Hostinger (onde está o domínio `simplificapn.com`): **Domínios → simplificapn.com → DNS / Nameservers → Adicionar registro**:
+
+| Tipo | Nome | Aponta para | TTL |
+|---|---|---|---|
+| `A` | `vendalaudos` | IP do seu VPS | 300 |
+
+> Precisa ser um **VPS** (da própria Hostinger ou de outro provedor) com Docker instalado. A hospedagem compartilhada de sites não roda este sistema. As portas **80 e 443** do VPS precisam estar liberadas.
+
+### Passo 2 — Subir o sistema no VPS
+
+```bash
+# no VPS (com Docker + Docker Compose instalados)
+git clone https://github.com/dioniap/Claude.git atende-laudos
+cd atende-laudos
+git checkout claude/whatsapp-ai-laudo-leads-tviuxz
+cp .env.example .env
+nano .env               # preencha as credenciais
+nano knowledge/base.md  # valores, prazos, e-mail p/ documentos
+
+docker compose up -d --build
+docker compose logs -f app   # acompanhar a subida
+```
+
+O Caddy detecta o domínio (variável `DOMAIN`, já padrão `vendalaudos.simplificapn.com`) e emite o certificado automaticamente na primeira visita — o DNS do Passo 1 precisa já estar propagado.
+
+### Passo 3 — Apontar o webhook da Meta
+No painel do seu app na Meta (WhatsApp → Configuração → Webhook):
+
+- **URL de callback:** `https://vendalaudos.simplificapn.com/webhook`
+- **Token de verificação:** o valor de `WHATSAPP_VERIFY_TOKEN` do `.env`
+- Assinar os campos **`messages`** (e `smb_message_echoes` se disponível)
+
+### Atualizações e manutenção
+
+```bash
+cd atende-laudos
+git pull
+docker compose up -d --build     # aplica nova versão
+docker compose restart app       # reinicia (ex.: após editar knowledge/base.md)
+cp data/atende-laudos.db /backup/  # backup do banco (faça com frequência)
+```
 
 ---
 

@@ -7,6 +7,8 @@ function required(name, fallback = undefined) {
 
 export const config = {
   port: parseInt(process.env.PORT || "3000", 10),
+  // Endereco publico do sistema (painel e webhook da Meta)
+  publicUrl: (process.env.PUBLIC_URL || "https://vendalaudos.simplificapn.com").replace(/\/$/, ""),
 
   // ----- Anthropic (cerebro do atendimento) -----
   anthropic: {
