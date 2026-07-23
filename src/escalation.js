@@ -1,6 +1,5 @@
 import { config } from "./config.js";
-import { sendText } from "./whatsapp.js";
-import { redriveEnabled, sendBotMessage } from "./redrive.js";
+import { sendText, sendEscalationTemplate } from "./whatsapp.js";
 
 const MOTIVO_LABEL = {
   pedido_do_lead: "Lead pediu atendimento humano",
@@ -12,15 +11,22 @@ const MOTIVO_LABEL = {
   outro: "Outro",
 };
 
+/** Parametros de template da Meta nao aceitam quebras de linha/tabs. */
+function templateParamSafe(text, max = 700) {
+  return String(text || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
+}
+
 /**
- * Avisa o Dioni no WhatsApp pessoal com o resumo do caso e o contato do lead.
+ * Avisa o Dioni no WhatsApp com o resumo do caso e o contato do lead —
+ * SEMPRE pela API oficial da Meta:
  *
- * Canais (ESCALATION_CHANNEL):
- *  - "redrive": envia pelo bot do Redrive (numero nao-oficial conectado por QR) —
- *    nao depende da janela de 24h da API oficial.
- *  - "meta": envia pelo numero oficial via Cloud API — so chega se o Dioni tiver
- *    conversado com o numero nas ultimas 24h (janela de atendimento).
- *  - "both" (padrao): tenta o Redrive primeiro e usa a Cloud API como fallback.
+ * 1. Tenta mensagem de texto livre (funciona se o Dioni interagiu com o
+ *    numero nas ultimas 24h — janela de atendimento).
+ * 2. Fora da janela, envia o TEMPLATE de escalonamento aprovado
+ *    (WHATSAPP_ESCALATION_TEMPLATE_NAME) com o resumo na variavel do corpo.
  */
 export async function notifyDioni({ leadPhone, leadName, motivo, resumo }) {
   const texto =
@@ -31,29 +37,31 @@ export async function notifyDioni({ leadPhone, leadName, motivo, resumo }) {
     `wa.me/${leadPhone}\n\n` +
     `*Resumo:*\n${resumo}`;
 
-  const channel = config.escalation.channel;
   const to = config.escalation.phone;
-  const errors = [];
 
-  if ((channel === "redrive" || channel === "both") && redriveEnabled()) {
-    try {
-      await sendBotMessage(to, texto.replace(/\*/g, ""));
-      return;
-    } catch (e) {
-      errors.push(`redrive: ${e.message}`);
-    }
+  try {
+    await sendText(to, texto);
+    return;
+  } catch (e) {
+    console.warn(
+      `[escalation] texto livre falhou (provavel janela de 24h fechada): ${e.message}`
+    );
   }
 
-  if (channel === "meta" || channel === "both") {
-    try {
-      await sendText(to, texto);
-      return;
-    } catch (e) {
-      errors.push(`meta: ${e.message}`);
-    }
+  if (!config.whatsapp.escalationTemplate.name) {
+    console.error(
+      "[escalation] WHATSAPP_ESCALATION_TEMPLATE_NAME nao configurado - aviso NAO entregue. " +
+        "Crie um template de utilidade com 1 variavel e configure no .env."
+    );
+    return;
   }
 
-  if (errors.length) {
-    console.error(`[escalation] falha ao notificar Dioni: ${errors.join(" | ")}`);
+  const paramText = templateParamSafe(
+    `${MOTIVO_LABEL[motivo] || motivo} — Lead: ${leadName || "sem nome"} (+${leadPhone}). ${resumo}`
+  );
+  try {
+    await sendEscalationTemplate(to, paramText);
+  } catch (e) {
+    console.error(`[escalation] template de escalonamento falhou: ${e.message}`);
   }
 }

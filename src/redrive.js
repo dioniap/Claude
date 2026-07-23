@@ -59,22 +59,9 @@ export async function markClient(leadId) {
   return redriveRequest("/v1/crm/add-client", { body: { leadId } });
 }
 
-/** Bots (numeros) ativos na plataforma Redrive. */
-export async function getActiveBots() {
-  return redriveRequest("/v1/get-active-bots", { method: "GET" });
-}
-
-/**
- * Envia mensagem de texto pelo bot do Redrive (numero nao-oficial conectado por QR code).
- * Util para avisar o Dioni sem depender da janela de 24h da API oficial.
- */
-export async function sendBotMessage(to, message, bot = config.redrive.botPhone) {
-  if (!bot) {
-    const bots = await getActiveBots();
-    bot = bots?.[0]?.phone;
-  }
-  if (!bot) throw new Error("Nenhum bot ativo no Redrive para enviar mensagem");
-  return redriveRequest("/v1/wp/send-message", { body: { bot, to, message } });
+/** Verificacao simples de conectividade com a API do Redrive. */
+export async function checkStatus() {
+  return redriveRequest("/status", { body: {} });
 }
 
 /**

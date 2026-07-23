@@ -81,6 +81,29 @@ export async function sendTemplate(to, { name: leadName } = {}) {
   });
 }
 
+/**
+ * Template de utilidade para avisar o Dioni fora da janela de 24h.
+ * Assume 1 variavel no corpo com o resumo do escalonamento.
+ */
+export async function sendEscalationTemplate(to, paramText) {
+  const t = config.whatsapp.escalationTemplate;
+  return graphRequest(`${config.whatsapp.phoneNumberId}/messages`, {
+    method: "POST",
+    body: {
+      messaging_product: "whatsapp",
+      to,
+      type: "template",
+      template: {
+        name: t.name,
+        language: { code: t.language },
+        components: [
+          { type: "body", parameters: [{ type: "text", text: paramText }] },
+        ],
+      },
+    },
+  });
+}
+
 export async function markAsRead(messageId) {
   try {
     await graphRequest(`${config.whatsapp.phoneNumberId}/messages`, {

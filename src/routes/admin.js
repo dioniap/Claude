@@ -2,13 +2,7 @@ import express from "express";
 import multer from "multer";
 import * as XLSX from "xlsx";
 import { config } from "../config.js";
-import {
-  db,
-  getHistory,
-  listLeads,
-  setConversationStatus,
-  upsertLead,
-} from "../db.js";
+import { listLeads, upsertLead } from "../db.js";
 import {
   enqueueContacts,
   enqueueFromRedrive,
@@ -18,26 +12,23 @@ import {
   stopDispatchQueue,
 } from "../dispatch.js";
 import { normalizePhone } from "../whatsapp.js";
-import { getActiveBots, redriveEnabled } from "../redrive.js";
+import { checkStatus, redriveEnabled } from "../redrive.js";
+import { gclickEnabled } from "../gclick.js";
+import { requireUserOrAdminToken } from "../auth.js";
 
 export const adminRouter = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-// Autenticacao simples por token (header Authorization: Bearer <ADMIN_TOKEN>)
-adminRouter.use((req, res, next) => {
-  if (!config.adminToken) return next();
-  const auth = req.get("authorization") || "";
-  if (auth === `Bearer ${config.adminToken}`) return next();
-  return res.status(401).json({ error: "nao autorizado" });
-});
+// Aceita login do painel (Bearer <token de sessao>) ou ADMIN_TOKEN (scripts)
+adminRouter.use(requireUserOrAdminToken);
 
 // ---------- saude ----------
 adminRouter.get("/health", async (req, res) => {
   let redriveStatus = "desativado";
   if (redriveEnabled()) {
     try {
-      const bots = await getActiveBots();
-      redriveStatus = `ok (${bots.length} bot(s) ativo(s))`;
+      await checkStatus();
+      redriveStatus = "ok";
     } catch (e) {
       redriveStatus = `erro: ${e.message}`;
     }
@@ -47,6 +38,8 @@ adminRouter.get("/health", async (req, res) => {
     model: config.anthropic.model,
     whatsappPhoneNumberId: config.whatsapp.phoneNumberId,
     redrive: redriveStatus,
+    gclick: gclickEnabled() ? "configurado" : "nao configurado",
+    smtp: config.smtp.user ? "configurado" : "nao configurado",
     dispatchRunning: isDispatchRunning(),
   });
 });
@@ -146,31 +139,4 @@ adminRouter.get("/dispatch/stats", (req, res) => {
     running: isDispatchRunning(),
     stats: getDispatchStats(req.query.campaign),
   });
-});
-
-// ---------- conversas ----------
-adminRouter.get("/conversations", (req, res) => {
-  const rows = db
-    .prepare("SELECT * FROM conversations ORDER BY last_message_at DESC LIMIT 200")
-    .all();
-  res.json(rows);
-});
-
-adminRouter.get("/conversations/:phone/messages", (req, res) => {
-  const phone = normalizePhone(req.params.phone);
-  res.json(getHistory(phone, 200));
-});
-
-/** Pausa a IA para um lead (o Dioni assume manualmente). */
-adminRouter.post("/conversations/:phone/pause", (req, res) => {
-  const phone = normalizePhone(req.params.phone);
-  setConversationStatus(phone, "pausada");
-  res.json({ phone, status: "pausada" });
-});
-
-/** Reativa a IA para um lead. */
-adminRouter.post("/conversations/:phone/resume", (req, res) => {
-  const phone = normalizePhone(req.params.phone);
-  setConversationStatus(phone, "ativa");
-  res.json({ phone, status: "ativa" });
 });

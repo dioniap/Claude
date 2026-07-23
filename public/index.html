@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel de Atendimento — Simplifica Laudos</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- ===== LOGIN ===== -->
+  <div id="screen-login" class="auth-screen hidden">
+    <div class="auth-card">
+      <h1>Simplifica <span>Laudos</span></h1>
+      <p class="auth-sub">Painel de Atendimento</p>
+      <div id="login-form">
+        <label>E-mail</label>
+        <input type="email" id="login-email" placeholder="seu@email.com" autocomplete="username" />
+        <label>Senha</label>
+        <input type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password" />
+        <div id="login-error" class="auth-error hidden"></div>
+        <button id="btn-login" class="btn-primary">Entrar</button>
+        <button id="btn-show-forgot" class="btn-link">Esqueci minha senha</button>
+      </div>
+      <div id="forgot-form" class="hidden">
+        <p class="auth-info">Informe seu e-mail. Você receberá uma <b>senha provisória</b> e o sistema pedirá uma nova senha no próximo acesso.</p>
+        <label>E-mail</label>
+        <input type="email" id="forgot-email" placeholder="seu@email.com" />
+        <div id="forgot-msg" class="auth-info hidden"></div>
+        <button id="btn-forgot" class="btn-primary">Enviar senha provisória</button>
+        <button id="btn-back-login" class="btn-link">Voltar ao login</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TROCA OBRIGATORIA DE SENHA ===== -->
+  <div id="screen-change-pass" class="auth-screen hidden">
+    <div class="auth-card">
+      <h1>Nova senha</h1>
+      <p class="auth-sub">Você entrou com uma senha provisória. Crie sua nova senha.</p>
+      <label>Nova senha (mín. 8 caracteres)</label>
+      <input type="password" id="new-pass" placeholder="••••••••" />
+      <label>Repita a nova senha</label>
+      <input type="password" id="new-pass2" placeholder="••••••••" />
+      <div id="change-error" class="auth-error hidden"></div>
+      <button id="btn-change-pass" class="btn-primary">Salvar nova senha</button>
+    </div>
+  </div>
+
+  <!-- ===== APP ===== -->
+  <div id="screen-app" class="app hidden">
+    <aside class="sidebar">
+      <div class="brand">Simplifica<br /><span>Laudos</span></div>
+      <nav>
+        <button data-tab="conversas" class="nav-btn active">💬 Conversas</button>
+        <button data-tab="interno" class="nav-btn">👥 Chat interno <span id="badge-interno" class="badge hidden"></span></button>
+        <button data-tab="gclick" class="nav-btn">📋 G-Click</button>
+      </nav>
+      <div class="sidebar-footer">
+        <div id="me-name" class="me"></div>
+        <button id="btn-logout" class="btn-link light">Sair</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <!-- ===== CONVERSAS ===== -->
+      <section id="tab-conversas" class="tab">
+        <div class="pane pane-list">
+          <div class="pane-header">
+            <h2>Conversas</h2>
+            <div id="conv-filters" class="chips"></div>
+          </div>
+          <div id="conv-list" class="conv-list"></div>
+        </div>
+        <div class="pane pane-thread">
+          <div id="thread-empty" class="thread-empty">Selecione uma conversa</div>
+          <div id="thread" class="hidden">
+            <div class="thread-header">
+              <div>
+                <div id="thread-name" class="thread-name"></div>
+                <div id="thread-meta" class="thread-meta"></div>
+              </div>
+              <div class="thread-actions">
+                <button id="btn-assume" class="btn-secondary">Assumir atendimento</button>
+                <button id="btn-return-ia" class="btn-secondary">Devolver para IA</button>
+              </div>
+            </div>
+            <div id="thread-messages" class="thread-messages"></div>
+            <div class="composer">
+              <textarea id="composer-text" rows="2" placeholder="Escreva sua mensagem para o lead..."></textarea>
+              <button id="btn-send" class="btn-primary">Enviar</button>
+            </div>
+            <div id="composer-hint" class="composer-hint"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== CHAT INTERNO ===== -->
+      <section id="tab-interno" class="tab hidden">
+        <div class="pane pane-list">
+          <div class="pane-header"><h2>Chat interno</h2></div>
+          <div id="internal-users" class="conv-list"></div>
+        </div>
+        <div class="pane pane-thread">
+          <div id="internal-empty" class="thread-empty">Escolha um colega para conversar</div>
+          <div id="internal-thread" class="hidden">
+            <div class="thread-header">
+              <div class="thread-name" id="internal-name"></div>
+            </div>
+            <div id="internal-messages" class="thread-messages"></div>
+            <div class="composer">
+              <textarea id="internal-text" rows="2" placeholder="Mensagem interna..."></textarea>
+              <button id="btn-internal-send" class="btn-primary">Enviar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== G-CLICK ===== -->
+      <section id="tab-gclick" class="tab hidden">
+        <div class="pane pane-full">
+          <div class="pane-header">
+            <h2>G-Click — Solicitações (Laudos Periciais)</h2>
+          </div>
+          <div id="gclick-not-configured" class="gclick-warn hidden">
+            ⚠️ Integração G-Click não configurada. Copie as credenciais do sistema omnichannel para o <code>.env</code> (variáveis <code>GCLICK_*</code>) e reinicie o servidor.
+          </div>
+          <form id="gclick-filters" class="gclick-filters">
+            <input type="text" id="gc-cliente" placeholder="Cliente" />
+            <input type="text" id="gc-descricao" placeholder="Descrição" />
+            <label>Início de <input type="date" id="gc-inicio-de" /></label>
+            <label>até <input type="date" id="gc-inicio-ate" /></label>
+            <label>Meta de <input type="date" id="gc-meta-de" /></label>
+            <label>até <input type="date" id="gc-meta-ate" /></label>
+            <label>Vencimento de <input type="date" id="gc-venc-de" /></label>
+            <label>até <input type="date" id="gc-venc-ate" /></label>
+            <button type="submit" class="btn-primary">Buscar</button>
+          </form>
+          <div id="gclick-results" class="gclick-results"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

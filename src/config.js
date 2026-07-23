@@ -31,22 +31,48 @@ export const config = {
       // URL publica da imagem do cabecalho do template (se o template tiver header de imagem)
       headerImageUrl: process.env.WHATSAPP_TEMPLATE_IMAGE_URL || "",
     },
+    // Template de utilidade usado para avisar o Dioni fora da janela de 24h
+    // (crie um template com 1 variavel no corpo, ex.: "Novo atendimento aguardando: {{1}}")
+    escalationTemplate: {
+      name: process.env.WHATSAPP_ESCALATION_TEMPLATE_NAME || "",
+      language: process.env.WHATSAPP_ESCALATION_TEMPLATE_LANGUAGE || "pt_BR",
+    },
   },
 
-  // ----- Redrive (CRM / disparos em massa) -----
+  // ----- Redrive (CRM / leads) -----
   redrive: {
     baseUrl: process.env.REDRIVE_BASE_URL || "https://api.redrive.com.br",
     token: process.env.REDRIVE_API_TOKEN || "",
-    // Bot (numero conectado no Redrive) usado para avisar o Dioni sem depender da janela de 24h da Meta
-    botPhone: process.env.REDRIVE_BOT_PHONE || "",
   },
 
-  // ----- Escalonamento para humano -----
+  // ----- Escalonamento para humano (sempre pela API oficial da Meta) -----
   escalation: {
     // WhatsApp do Dioni que recebe os resumos quando a IA nao consegue resolver
     phone: process.env.ESCALATION_PHONE || "5586994110184",
-    // "redrive" (recomendado: sem janela de 24h) | "meta" | "both"
-    channel: process.env.ESCALATION_CHANNEL || "both",
+  },
+
+  // ----- E-mail (Hostinger) - usado no "esqueci minha senha" do painel -----
+  smtp: {
+    host: process.env.SMTP_HOST || "smtp.hostinger.com",
+    port: parseInt(process.env.SMTP_PORT || "465", 10),
+    secure: (process.env.SMTP_SECURE || "true") === "true",
+    user: process.env.SMTP_USER || "",
+    pass: process.env.SMTP_PASS || "",
+    from: process.env.MAIL_FROM || process.env.SMTP_USER || "",
+  },
+
+  // ----- G-Click (solicitacoes do setor de laudos periciais) -----
+  // Copie os valores do sistema omnichannel (onde a integracao ja funciona).
+  gclick: {
+    baseUrl: process.env.GCLICK_BASE_URL || "https://api.gclick.com.br",
+    authUrl: process.env.GCLICK_AUTH_URL || "",
+    clientId: process.env.GCLICK_CLIENT_ID || "",
+    clientSecret: process.env.GCLICK_CLIENT_SECRET || "",
+    user: process.env.GCLICK_USER || "",
+    pass: process.env.GCLICK_PASS || "",
+    empId: process.env.GCLICK_EMP_ID || "2093",
+    // Ajuste os caminhos se o omnichannel usar rotas diferentes
+    solicitacoesPath: process.env.GCLICK_SOLICITACOES_PATH || "/solicitacoes",
   },
 
   // ----- Comportamento do atendimento -----
@@ -56,12 +82,13 @@ export const config = {
     // Quantas mensagens de historico enviar ao Claude
     historyLimit: parseInt(process.env.HISTORY_LIMIT || "40", 10),
     // Ao detectar resposta manual (celular/coexistencia), pausa a IA nessa conversa por N horas
+    // (no painel e possivel devolver o atendimento para a IA a qualquer momento)
     pauseOnHumanHours: parseInt(process.env.PAUSE_ON_HUMAN_HOURS || "12", 10),
     // Intervalo minimo entre envios de template no disparo (ms)
     dispatchIntervalMs: parseInt(process.env.DISPATCH_INTERVAL_MS || "6000", 10),
   },
 
-  // ----- Admin API -----
+  // ----- Admin API (integracoes/scripts; o painel usa login por usuario) -----
   adminToken: process.env.ADMIN_TOKEN || "",
 
   dbPath: process.env.DB_PATH || "./data/atende-laudos.db",
@@ -77,9 +104,9 @@ export function assertConfig() {
         `O servidor sobe, mas as integracoes correspondentes vao falhar. Veja .env.example.`
     );
   }
-  if (!config.adminToken) {
+  if (!config.smtp.user || !config.smtp.pass) {
     console.warn(
-      "[config] ATENCAO: ADMIN_TOKEN nao definido - as rotas /api/* ficam abertas. Defina em producao."
+      "[config] ATENCAO: SMTP nao configurado - o 'esqueci minha senha' do painel nao vai enviar e-mail."
     );
   }
 }

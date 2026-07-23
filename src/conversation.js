@@ -187,7 +187,7 @@ async function respond(phone, parts) {
   // ainda enviamos esta ultima resposta (ex.: "o Dioni vai te chamar"), que faz parte do fluxo.
 
   await sendWhatsAppReply(phone, reply);
-  saveMessage({ phone, role: "assistant", content: reply });
+  saveMessage({ phone, role: "assistant", sender: "ia", content: reply });
 }
 
 async function sendWhatsAppReply(phone, text) {
@@ -208,8 +208,9 @@ async function sendWhatsAppReply(phone, text) {
 
 /**
  * Detecta resposta manual enviada pelo celular (coexistencia WhatsApp Business app
- * + Cloud API). Quando o Dioni responde manualmente um lead, a IA pausa naquela
- * conversa por PAUSE_ON_HUMAN_HOURS horas para nao atropelar o atendimento humano.
+ * + Cloud API). Quando alguem responde manualmente um lead pelo aparelho, a IA pausa
+ * naquela conversa por PAUSE_ON_HUMAN_HOURS horas — no painel e possivel devolver
+ * o atendimento para a IA a qualquer momento ("Devolver para IA").
  */
 export function handleHumanEcho(echoMessage) {
   const phone = echoMessage?.to;
@@ -223,7 +224,7 @@ export function handleHumanEcho(echoMessage) {
   setConversationStatus(phone, "pausada", until);
   const body = echoMessage?.text?.body;
   if (body) {
-    saveMessage({ phone, role: "assistant", content: `[resposta manual do Dioni] ${body}` });
+    saveMessage({ phone, role: "assistant", sender: "celular", content: body });
   }
   console.log(`[conversation] resposta manual detectada para ${phone}; IA pausada até ${until}`);
 }
