@@ -1,0 +1,280 @@
+================================================================================
+  ATENDE-LAUDOS - GUIA DE INSTALACAO NA SUA VPS WINDOWS
+  Sistema de atendimento IA no WhatsApp para venda de laudos periciais
+  Simplifica Contabilidade - vendalaudos.simplificapn.com
+================================================================================
+
+COMO USAR ESTE ARQUIVO:
+  - Voce vai executar os comandos ABAIXO, NA SUA VPS (a maquina Windows onde
+    ficam seus outros sistemas, em C:\Users\dioni.WIN-HP2EQOL52VI\).
+  - Abra o "Prompt de Comando" (cmd) ou o "PowerShell" NA SUA VPS.
+  - Copie e cole um bloco de cada vez, na ordem. Onde tiver [PREENCHER],
+    troque pelo valor real.
+  - Linhas que comecam com "REM" ou ":" sao so explicacao, nao precisa colar.
+
+IMPORTANTE: nada disso roda no computador da nuvem da Anthropic. Tudo acontece
+na SUA maquina, e o sistema vai ficar junto dos seus outros projetos.
+
+================================================================================
+  PARTE 1 - CONFERIR OS PRE-REQUISITOS (Git e Node.js)
+================================================================================
+
+: Abra o cmd na VPS e rode estes dois comandos:
+
+git --version
+node --version
+
+: - Se aparecer uma versao do git (ex.: git version 2.x), OK.
+: - Se aparecer uma versao do node (precisa ser 20 ou maior, ex.: v20 ou v22), OK.
+:
+: SE FALTAR ALGUM:
+:   - Git:    baixe em  https://git-scm.com/download/win  (instalador padrao, Next/Next)
+:   - Node:   baixe a versao LTS em  https://nodejs.org/  (instalador padrao)
+: Depois de instalar, FECHE e ABRA o cmd de novo e rode os dois comandos again.
+
+
+================================================================================
+  PARTE 2 - BAIXAR O PROJETO DO GITHUB PARA A SUA VPS
+================================================================================
+
+: Isto cria a pasta atende-laudos junto dos seus outros sistemas.
+
+cd C:\Users\dioni.WIN-HP2EQOL52VI
+git clone https://github.com/dioniap/Claude.git atende-laudos
+cd atende-laudos
+git checkout claude/whatsapp-ai-laudo-leads-tviuxz
+
+: Confira que baixou (deve listar: src, public, package.json, Dockerfile etc.):
+dir
+
+
+================================================================================
+  PARTE 3 - INSTALAR AS DEPENDENCIAS
+================================================================================
+
+npm install
+
+: Isso baixa as bibliotecas (Express, SDK da Anthropic, SQLite, etc.).
+: Pode demorar 1-3 minutos. Se der erro no "better-sqlite3", veja a secao
+: SOLUCAO DE PROBLEMAS no final deste arquivo.
+
+
+================================================================================
+  PARTE 4 - CRIAR E PREENCHER O ARQUIVO DE CONFIGURACAO (.env)
+================================================================================
+
+: Cria o .env a partir do modelo e abre no Bloco de Notas:
+
+copy .env.example .env
+notepad .env
+
+: No Bloco de Notas que abrir, preencha as variaveis abaixo e SALVE (Ctrl+S):
+:
+: --- OBRIGATORIAS PARA FUNCIONAR ---
+:   PORT=3010
+:       (use 3010 para nao conflitar com seus outros sistemas; se 3010 tambem
+:        estiver em uso, escolha outra porta livre, ex.: 3011)
+:
+:   ANTHROPIC_API_KEY=[PREENCHER]
+:       (crie em https://platform.claude.com  ->  API Keys)
+:
+:   WHATSAPP_ACCESS_TOKEN=[PREENCHER]
+:       (token permanente da Meta - veja o README.md, secao "Credenciais da Meta")
+:   WHATSAPP_PHONE_NUMBER_ID=1198577410012883   (ja vem preenchido)
+:   WHATSAPP_APP_SECRET=[PREENCHER]
+:   WHATSAPP_VERIFY_TOKEN=simplifica-laudos-verify   (voce escolhe; anote, vai usar na Meta)
+:   WHATSAPP_ESCALATION_TEMPLATE_NAME=[PREENCHER]
+:       (nome de um template de utilidade que voce cria na Meta com 1 variavel,
+:        ex.: "Novo atendimento aguardando no painel: {{1}}")
+:
+: --- E-MAIL (esqueci minha senha do painel) ---
+:   SMTP_USER=contato@simplificapn.com
+:   SMTP_PASS=[PREENCHER com a senha do e-mail na Hostinger]
+:
+: --- REDRIVE (leads) ---
+:   REDRIVE_API_TOKEN=[PREENCHER com seu token do Redrive]
+:
+: --- G-CLICK (solicitacoes de laudos) ---
+:   COPIE estes valores do .env do seu sistema omnichannel (nesta mesma VPS):
+:   GCLICK_BASE_URL=...
+:   GCLICK_AUTH_URL=...
+:   GCLICK_CLIENT_ID=...
+:   GCLICK_CLIENT_SECRET=...
+:   GCLICK_USER=...
+:   GCLICK_PASS=...
+:   GCLICK_EMP_ID=2093
+:
+: --- ENDERECO PUBLICO ---
+:   PUBLIC_URL=https://vendalaudos.simplificapn.com
+:   DOMAIN=vendalaudos.simplificapn.com
+:
+: Para ver o .env do omnichannel e copiar as variaveis GCLICK_ (troque a pasta
+: pelo nome real do seu sistema), rode em OUTRO cmd:
+:     type C:\Users\dioni.WIN-HP2EQOL52VI\[PASTA-DO-OMNICHANNEL]\.env
+
+
+================================================================================
+  PARTE 5 - PREENCHER A BASE DE CONHECIMENTO DA IA
+================================================================================
+
+notepad knowledge\base.md
+
+: Preencha os campos [PREENCHER]: valores dos laudos, descontos por quantidade,
+: prazos, e-mail para envio de documentos e chave PIX. A IA SO fala o que
+: estiver aqui - campos vazios fazem ela escalar para voce em vez de inventar.
+: Salve (Ctrl+S) e feche.
+
+
+================================================================================
+  PARTE 6 - TESTAR SE SUBIU
+================================================================================
+
+npm start
+
+: Deve aparecer:
+:   [server] atende-laudos ouvindo na porta 3010
+:   [server] painel:  https://vendalaudos.simplificapn.com/
+:
+: Abra o navegador na VPS em:   http://localhost:3010
+: Deve aparecer a tela de LOGIN do painel.
+: Entre com:  dioni630@gmail.com  /  senha 12345678  (troque a senha no 1o acesso)
+:
+: Deu certo? Pare o teste com Ctrl+C e siga para a PARTE 7 (deixar rodando sempre).
+
+
+================================================================================
+  PARTE 7 - DEIXAR O SISTEMA RODANDO SEMPRE (mesmo apos reiniciar a VPS)
+================================================================================
+
+: Use o MESMO metodo que seus outros sistemas usam para ficar no ar.
+: Se voce nao sabe qual e, o mais simples no Windows e o PM2 (abaixo).
+
+: 1) Instala o PM2 (gerenciador de processos Node):
+npm install -g pm2
+
+: 2) Sobe o atende-laudos pelo PM2:
+cd C:\Users\dioni.WIN-HP2EQOL52VI\atende-laudos
+pm2 start src/server.js --name atende-laudos
+
+: 3) Salva a lista para reiniciar sozinho:
+pm2 save
+
+: 4) Comandos uteis do dia a dia:
+:     pm2 status                 (ver se esta rodando)
+:     pm2 logs atende-laudos     (ver os logs em tempo real)
+:     pm2 restart atende-laudos  (reiniciar, ex.: apos editar knowledge\base.md)
+:     pm2 stop atende-laudos     (parar)
+:
+: OBS: para o PM2 iniciar junto com o Windows, o jeito mais robusto e instalar
+: como servico. Se seus outros sistemas ja fazem isso de alguma forma
+: (NSSM, Agendador de Tarefas, etc.), use o mesmo padrao para o atende-laudos.
+
+
+================================================================================
+  PARTE 8 - PUBLICAR NA INTERNET (Cloudflare Tunnel) - vendalaudos.simplificapn.com
+================================================================================
+
+: Seu omnichannel (atendimento.simplificapn.com) ja e publicado pelo Cloudflare.
+: Voce so precisa adicionar mais um endereco (vendalaudos) apontando para a
+: porta local 3010.
+
+: --- OPCAO A: pelo painel do Cloudflare (mais facil) ---
+: 1. Acesse  https://one.dash.cloudflare.com
+: 2. Menu:  Networks -> Tunnels -> (clique no seu tunel existente)
+: 3. Aba "Public Hostname" -> botao "Add a public hostname":
+:        Subdomain:     vendalaudos
+:        Domain:        simplificapn.com
+:        Service Type:  HTTP
+:        URL:           localhost:3010
+: 4. Salve. O Cloudflare cria o DNS sozinho. Em ~1 minuto,
+:    https://vendalaudos.simplificapn.com ja abre o painel.
+
+: --- OPCAO B: pelo arquivo de config do cloudflared (se voce configura por arquivo) ---
+: Abra o config do tunel (geralmente em C:\Users\dioni.WIN-HP2EQOL52VI\.cloudflared\config.yml)
+:     notepad %USERPROFILE%\.cloudflared\config.yml
+: E adicione uma linha na secao "ingress", ANTES da linha "service: http_status:404":
+:
+:     - hostname: vendalaudos.simplificapn.com
+:       service: http://localhost:3010
+:
+: Depois reinicie o servico do cloudflared (o mesmo comando/servico que voce ja usa).
+
+
+================================================================================
+  PARTE 9 - APONTAR O WEBHOOK DA META PARA O NOVO ENDERECO
+================================================================================
+
+: No painel do SEU app na Meta (developers.facebook.com):
+:   WhatsApp -> Configuracao -> Webhook -> Editar:
+:     URL de callback:       https://vendalaudos.simplificapn.com/webhook
+:     Token de verificacao:  o mesmo valor do WHATSAPP_VERIFY_TOKEN do seu .env
+:   Em "Campos do webhook", assine:  messages  (e smb_message_echoes se aparecer)
+:
+: Pronto! A partir daqui, quando um lead responder, a IA assume a conversa.
+
+
+================================================================================
+  ATUALIZAR O SISTEMA NO FUTURO (quando houver melhorias)
+================================================================================
+
+cd C:\Users\dioni.WIN-HP2EQOL52VI\atende-laudos
+git pull
+npm install
+pm2 restart atende-laudos
+
+
+================================================================================
+  BACKUP (importante - faca de vez em quando)
+================================================================================
+
+: O banco de dados (leads, conversas, usuarios) fica em:
+:     C:\Users\dioni.WIN-HP2EQOL52VI\atende-laudos\data\atende-laudos.db
+: Copie esse arquivo para um lugar seguro periodicamente.
+
+
+================================================================================
+  SOLUCAO DE PROBLEMAS
+================================================================================
+
+: "npm install" falhou no better-sqlite3:
+:   Instale as ferramentas de build da Microsoft e tente de novo:
+:     npm install --global windows-build-tools
+:   (ou instale o "Desktop development with C++" pelo Visual Studio Build Tools)
+:   Depois: cd atende-laudos  e  npm install  outra vez.
+:
+: A porta 3010 ja esta em uso:
+:   Escolha outra porta livre no .env (PORT=3011, por exemplo) e atualize
+:   tambem a URL do tunel na PARTE 8 (localhost:3011).
+:
+: O painel abre em localhost mas nao em vendalaudos.simplificapn.com:
+:   O problema esta no tunel do Cloudflare (PARTE 8) - confira se o hostname
+:   aponta para a porta certa e se o cloudflared esta rodando.
+:
+: A IA nao responde os leads:
+:   1) pm2 logs atende-laudos   (veja o erro)
+:   2) confira ANTHROPIC_API_KEY e WHATSAPP_ACCESS_TOKEN no .env
+:   3) confira se o webhook da Meta esta apontando certo (PARTE 9)
+
+
+================================================================================
+  RESUMO ULTRA-RAPIDO (para quem ja tem Git e Node instalados)
+================================================================================
+
+cd C:\Users\dioni.WIN-HP2EQOL52VI
+git clone https://github.com/dioniap/Claude.git atende-laudos
+cd atende-laudos
+git checkout claude/whatsapp-ai-laudo-leads-tviuxz
+npm install
+copy .env.example .env
+notepad .env               (preencher e salvar)
+notepad knowledge\base.md  (preencher e salvar)
+npm install -g pm2
+pm2 start src/server.js --name atende-laudos
+pm2 save
+: -> depois adicione vendalaudos no tunel do Cloudflare (PARTE 8)
+: -> e aponte o webhook da Meta (PARTE 9)
+
+================================================================================
+  FIM. Duvida em qualquer passo? Cole aqui no chat a mensagem de erro que
+  aparecer no cmd, que a gente resolve.
+================================================================================
